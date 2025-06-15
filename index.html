@@ -135,7 +135,7 @@
   }
 
   function parseTests(text) {
-    const blocks = text.split("+++++");
+    const blocks = text.split(/(\+{4,}|\*{4,})/);
     const tests = blocks.map(block => {
       const parts = block.trim().split("====").map(p => p.trim()).filter(Boolean);
       if (parts.length < 2) return null;
