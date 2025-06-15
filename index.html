@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Blok test tizimi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f8fb;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #007BFF;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-size: 24px;
+    }
+    #controls {
+      text-align: center;
+      margin: 20px;
+    }
+    .section-btn {
+      padding: 10px 15px;
+      margin: 5px;
+      border: none;
+      background: #17a2b8;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .section-btn:hover {
+      background: #138496;
+    }
+    #testContainer {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .question {
+      margin-bottom: 20px;
+    }
+    .option {
+      display: block;
+      margin-left: 20px;
+      margin-top: 5px;
+      padding: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .option input {
+      margin-right: 10px;
+    }
+    .correct-answer {
+      background-color: #d4edda;
+    }
+    .wrong-answer {
+      background-color: #f8d7da;
+    }
+    .unanswered {
+      background-color: #fff3cd;
+    }
+    #indicators {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .indicator {
+      width: 30px;
+      height: 30px;
+      margin: 5px;
+      background: #ccc;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+    .indicator.active {
+      background: #28a745;
+      color: white;
+    }
+    #submitBtn {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #ffc107;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #resultBox {
+      display: none;
+      background: #d4edda;
+      color: #155724;
+      padding: 15px;
+      margin: 20px auto;
+      max-width: 400px;
+      border: 1px solid #c3e6cb;
+      border-radius: 5px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>Blok test tizimi</header>
+
+<div style="text-align: center; margin: 20px;">
+  <input type="file" id="fileInput" accept=".txt">
+</div>
+
+<div id="controls"></div>
+<div id="testContainer"></div>
+<div id="indicators"></div>
+<button id="submitBtn">Testni yakunlash</button>
+<div id="resultBox"></div>
+
+<script>
+  const sectionSize = 30;
+  let allTests = [];
+  let selectedTests = [];
+
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  function parseTests(text) {
+    const blocks = text.split("+++++");
+    const tests = blocks.map(block => {
+      const parts = block.trim().split("====").map(p => p.trim()).filter(Boolean);
+      if (parts.length < 2) return null;
+      const question = parts[0].replace(/^#/, '').trim();
+      const answers = parts.slice(1).map(ans => {
+        const correct = ans.startsWith("#");
+        const text = ans.replace(/^#/, '').trim();
+        return { text, correct };
+      });
+      return { question, answers };
+    });
+    return tests.filter(Boolean);
+  }
+
+  function loadSection(sectionIndex) {
+    const start = sectionIndex * sectionSize;
+    const end = start + sectionSize;
+    selectedTests = allTests.slice(start, end);
+    const testContainer = document.getElementById('testContainer');
+    const indicators = document.getElementById('indicators');
+    testContainer.innerHTML = '';
+    indicators.innerHTML = '';
+
+    selectedTests.forEach((test, index) => {
+      const qDiv = document.createElement('div');
+      qDiv.className = 'question';
+      qDiv.id = `question${index}`;
+
+      const qTitle = document.createElement('h3');
+      qTitle.textContent = `${start + index + 1}. ${test.question}`;
+      qDiv.appendChild(qTitle);
+
+      shuffleArray(test.answers);  // Tasodifiy tartibda javoblar
+
+      test.answers.forEach(ans => {
+        const label = document.createElement('label');
+        label.className = 'option';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = `q${index}`;
+        input.value = ans.text;
+        input.dataset.correct = ans.correct;
+
+        input.addEventListener('change', () => {
+          // Belgilanganidan keyin faqat 1 marta ishlaydi
+          if (label.classList.contains('correct-answer') || label.classList.contains('wrong-answer')) return;
+
+          const allOptions = document.querySelectorAll(`input[name='q${index}']`);
+          allOptions.forEach(opt => opt.disabled = true);
+
+          if (ans.correct) {
+            label.classList.add('correct-answer');
+          } else {
+            label.classList.add('wrong-answer');
+            // To‘g‘ri javobni ham yashil qilib ko‘rsat
+            allOptions.forEach(opt => {
+              if (opt.dataset.correct === 'true') {
+                opt.closest('label').classList.add('correct-answer');
+              }
+            });
+          }
+
+          document.getElementById('ind' + index).classList.add('active');
+        });
+
+        label.appendChild(input);
+        label.append(" " + ans.text);
+        qDiv.appendChild(label);
+      });
+
+      testContainer.appendChild(qDiv);
+
+      const ind = document.createElement('div');
+      ind.className = 'indicator';
+      ind.id = 'ind' + index;
+      ind.textContent = index + 1;
+      ind.onclick = () => {
+        document.getElementById('question' + index).scrollIntoView({ behavior: 'smooth' });
+      };
+      indicators.appendChild(ind);
+    });
+  }
+
+  function renderSections() {
+    const controls = document.getElementById('controls');
+    controls.innerHTML = '';
+    const numSections = Math.ceil(allTests.length / sectionSize);
+    for (let i = 0; i < numSections; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'section-btn';
+      btn.textContent = `Bo'lim ${i + 1}`;
+      btn.onclick = () => loadSection(i);
+      controls.appendChild(btn);
+    }
+  }
+
+  document.getElementById('submitBtn').onclick = () => {
+    let correctCount = 0;
+    selectedTests.forEach((test, index) => {
+      const options = document.querySelectorAll(`input[name='q${index}']`);
+      options.forEach(opt => {
+        if (opt.checked && opt.dataset.correct === 'true') {
+          correctCount++;
+        }
+      });
+    });
+
+    const resultBox = document.getElementById('resultBox');
+    resultBox.innerHTML = `<strong>To'g'ri javoblar:</strong> ${correctCount} / ${selectedTests.length}`;
+    resultBox.style.display = 'block';
+  };
+
+  document.getElementById('fileInput').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const text = e.target.result;
+      allTests = parseTests(text);
+      renderSections();
+      loadSection(0);
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+</script>
+
+</body>
+</html>
